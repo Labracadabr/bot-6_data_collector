@@ -1,9 +1,9 @@
-LEXICON_RU: dict[str, str] = {
+RU: dict[str, str] = {
 
     '/start': 'Привет!'
 
 }
-LEXICON_EN: dict[str, str] = {
+EN: dict[str, str] = {
 
     '/start': 'Hi!'
 

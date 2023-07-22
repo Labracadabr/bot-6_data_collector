@@ -3,7 +3,7 @@ logs.json
 .env
 user_baza.json
 /SELFIES
-
+/EXAMPLES
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

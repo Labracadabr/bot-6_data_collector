@@ -1,27 +1,36 @@
 import time
 import requests
 import os
+import json
 from aiogram import Router, Bot, F, types
 from aiogram.filters import Command, Text
 from aiogram.types import Message, CallbackQuery
-# from lexic.lexic import RU
 from datetime import datetime
 from bot_logic import log, Access
 from config_data.config import Config, load_config
 from keyboards import keyboard_admin, keyboard_ok, keyboard_privacy
+from variables import admins, SAVE_DIR, book, SAMPLE
 
 
-# Инициализация всяких штук
+# Инициализация всяких ботских штук
 router: Router = Router()
 config: Config = load_config()
 TKN: str = config.tg_bot.token
-verification_code: str = '125'
-admins: list[str] = ["992863889"]
-SAVE_DIR: str = r"C:\Users\PC\PycharmProjects\bot_collector\SELFIES"
-bans = []
 
 
-@router.message(Access(bans))
+# @router.message()
+# async def blabla(message: Message):
+#     await message.answer(text='ok')
+#     # for i in message:
+#     #     if not str(i).endswith('None)'):
+#     #         print(i)
+#
+#     print(message.reply_to_message.message_id)
+
+
+
+# чекнуть не в бане ли юзер
+@router.message(Access(book['ban']))
 async def no_access(message: Message):
     await message.answer(text='You are banned by @its_dmitrii')
     await message.answer(text=f'id {message.from_user.id}')
@@ -52,10 +61,14 @@ async def process_start_command(message: Message, bot: Bot):
 @router.callback_query(Text(text=['ok_pressed']))
 async def privacy_ok(callback: CallbackQuery, bot:Bot):
     user = str(callback.from_user.id)
+    log('logs.json', user, 'privacy_ok')
     # await callback.answer(text='Thanks! Please now send your selfie.')
     await bot.send_message(text='Thanks! Please now see the examples and send your selfie.', chat_id=user)
     # time.sleep(1)
-    await bot.send_message(text='🖼(тут будут примеры)', chat_id=user)
+
+    await bot.send_photo(photo='https://i.ibb.co/z89YvcS/collage.jpg', caption='Examples', chat_id=user)
+
+    # Loop through the list of photo filenames and add them to the media_group list
 
 
 # /help
@@ -63,7 +76,7 @@ async def privacy_ok(callback: CallbackQuery, bot:Bot):
 async def process_help_command(message: Message):
     user = str(message.from_user.id)
     log('logs.json', user, '/help')
-    await message.answer('no help')
+    await message.answer('If something does not work, contact @its_dmitrii')
 
 
 # user sent photo
@@ -71,9 +84,8 @@ async def process_help_command(message: Message):
 async def save_photo(m: types.Message, bot:Bot):
     user = m.from_user
     log('logs.json', m.from_user.id, 'SENT_PHOTO')
-    # await m.answer('Processing...')
 
-    # for i in str(m).split():
+    # for i in m:
     #     print(i)
     print()
     msg_time = str(m.date.date())+'_'+str(m.date.time()).replace(':', '-')
@@ -94,32 +106,23 @@ async def save_photo(m: types.Message, bot:Bot):
             f.write(response.content)
         await m.reply(f"Thanks! Please wait for us to check your work.")
 
+        # записи
+        log('logs.json', m.from_user.id, 'SENT_PHOTO')
+        log('user_baza.json', 'selfie_done', str(user.id))
+        book.setdefault('selfie_done', []).append(str(user.id))
+
         # Отправить файл админу и ожидать приемки
         for i in admins:
             await bot.forward_message(chat_id=i, from_chat_id=user.id, message_id=m.message_id)
-            await bot.send_message(chat_id=i, text=f'Принять файл от @{user.username} id {user.id}?',
+            await bot.send_message(chat_id=i, text=f'Принять файл от @{user.username} id{user.id}?',
                                    reply_markup=keyboard_admin)
+
     else:
         await m.reply("Failed to save the photo.")
 
-    print(str(m.date.date())+'_'+str(m.date.time()))
+    print(msg_time)
     print(m.from_user.full_name, 'sent photo')
     print()
 
 
-# admin ✅
-@router.callback_query(Text(text=['admin_ok']))
-async def admin_ok(callback: CallbackQuery, bot:Bot):
-    user = str(callback.message.text).split()[-1][:-1]
-    print(user)
-
-    await bot.send_message(chat_id=user, text=f"Success! Here is your verification code:")
-    await bot.send_message(chat_id=user, text=f'<code>{verification_code}</code>', parse_mode='HTML')
-
-
-# admin ❌
-@router.callback_query(Text(text=['admin_no']))
-async def admin_no(callback: CallbackQuery, bot: Bot):
-    user = str(callback.message.text).split()[-1][:-1]
-    await bot.send_message(chat_id=user, text="Wrong, please retry")
 

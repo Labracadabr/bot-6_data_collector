@@ -14,6 +14,11 @@ class Access(BaseFilter):
         return user_id_str in self.access
 
 
+# with open('user_baza.json', encoding='utf-8') as f:
+#     x = json.load(f)['ban']
+# bans = x
+
+
 # Запись данных item в указанный json file по ключу key
 def log(file, key, item):
     with open(file, encoding='utf-8') as f:

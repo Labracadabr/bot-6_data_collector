@@ -8,7 +8,7 @@ from bot_logic import Access, log
 router: Router = Router()
 
 
-# забанить юзера по id. пример сообщения: ban id123456789
+# Забанить юзера по id. Пример сообщения: ban id123456789
 @router.message(Access(admins), lambda msg: str(msg.text).lower().startswith('ban '))
 async def banner(msg: Message):
     # вытащить id из текста сообщения
@@ -16,36 +16,33 @@ async def banner(msg: Message):
     if ban_id.lower().startswith('id'):
         ban_id = ban_id[2:]
 
+    # ведение учета
     log('user_baza.json', 'ban', ban_id)
     book.setdefault('ban', []).append(ban_id)
-
-    # print(book)
-    # print(book['ban'])
 
     await msg.answer(text=f'id {ban_id} banned')
 
 
-# admin ✅
+# admin нажал ✅
 @router.callback_query(Text(text=['admin_ok']))
 async def admin_ok(callback: CallbackQuery, bot:Bot):
+    msg = callback.message
+
     # вытащить id из текста сообщения
-    for i in str(callback.message.text).split():
+    for i in str(msg.text).split():
         if i.lower().startswith('id'):
             worker = i[2:-1]
             break
 
-    m = callback.message
-    # print(worker)
-
     # убрать кнопки админа
-    await bot.edit_message_text(f'{m.text}\n\n✅ Принято', m.chat.id, m.message_id, reply_markup=None)
+    await bot.edit_message_text(f'{msg.text}\n\n✅ Принято', msg.chat.id, msg.message_id, reply_markup=None)
 
     # Дать юзеру код
     await bot.send_message(chat_id=worker, text=f"Success! Here is your verification code, just click it to copy:")
     await bot.send_message(chat_id=worker, text=f'<code>{verification_code}</code>', parse_mode='HTML')
 
 
-# admin ❌
+# admin нажал ❌
 @router.callback_query(Text(text=['admin_no']))
 async def admin_no(callback: CallbackQuery, bot: Bot):
     msg = callback.message
@@ -55,10 +52,10 @@ async def admin_no(callback: CallbackQuery, bot: Bot):
                                 msg.chat.id, msg.message_id, reply_markup=None)
 
 
-# причина отказа
+# Причина отказа
 @router.message(Access(admins), lambda msg: msg.reply_to_message)
 async def reply_decline_reason(m: Message, bot: Bot):
-    # вытащить id из текста сообщения
+    # worker = вытащить id из текста сообщения
     txt = str(m.reply_to_message.text).split()
     for i in txt:
         if i.lower().startswith('id'):

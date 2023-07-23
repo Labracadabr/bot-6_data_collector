@@ -1,6 +1,7 @@
 import json
 from aiogram.types import Message
 from aiogram.filters import BaseFilter
+from aiogram.filters.state import State, StatesGroup
 
 
 # Фильтр, проверяющий доступ юзера
@@ -14,9 +15,14 @@ class Access(BaseFilter):
         return user_id_str in self.access
 
 
-# with open('user_baza.json', encoding='utf-8') as f:
-#     x = json.load(f)['ban']
-# bans = x
+# Состояния FSM
+class FSM(StatesGroup):
+    # Создаем экземпляры класса State, последовательно перечисляя возможные состояния, в которых будет находиться
+    # бот в разные моменты взаимодействия с юзером
+    policy = State()            # Состояние ожидания соглашения с policy
+    platform_user_id = State()  # Состояние ожидания ввода id
+    upload_photo = State()      # Состояние ожидания загрузки фото
+    upload_2_photo = State()    # Состояние ожидания загрузки ДВУХ фото
 
 
 # Запись данных item в указанный json file по ключу key
@@ -38,5 +44,4 @@ def log(file, key, item):
 #             await bot.send_message(text=f'{message.text} id{user} {message.from_user.full_name}'
 #                                         f' @{message.from_user.username}', chat_id=i, disable_notification=silence)
 # не работает
-
 

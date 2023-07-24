@@ -1,7 +1,7 @@
 from variables import mngr
 
-RU: dict[str, str] = {}
-EN: dict = {
+# RU: dict[str, dict[str, str]] = {}
+EN: dict[str, dict[str, str]] = {
     'selfie': {
 
         'start': 'Hi!\n\n'
@@ -11,7 +11,7 @@ EN: dict = {
                  'We will check your file and give you the verification code.\n\n'
                  'Please read our privacy policy by the button below and press ✅ button to continue.',
 
-        'ban': f'You are banned by {mngr}',
+        'ban': f'You were banned',
 
         'help': f'If something does not work, contact {mngr}',
 
@@ -35,9 +35,9 @@ EN: dict = {
                  'We will check your file and give you the verification code.\n\n'
                  'Please read our privacy policy by the button below and press ✅ button to continue.',
 
-        'ban': f'You are banned by {mngr}',
+        'ban': f'You were banned',
 
-        'help': f'If something does not work, contact {mngr}',
+        'help': f'If something does not work, try again /start or contact {mngr}',
 
         'instruct1': 'Thanks! Please now see the examples and instruction.',
         'instruct2': 'Instructions:\n'
@@ -56,7 +56,7 @@ EN: dict = {
                      '\n',
 
 
-        'instruct3': 'You can now send your picture.',
+        'instruct3': 'You can now send your pictures. Please send each file in two separate messages, not as one album.',
 
         'example_link': 'https://storage.yandexcloud.net/sbs-toloka/rr/insurance_cards/example_correct_1.jpg',
         'log': 'med_done'

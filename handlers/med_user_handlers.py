@@ -1,10 +1,11 @@
 import time
+import json
 import requests
 import os
 from aiogram import Router, Bot, F, types, Dispatcher
 from aiogram.filters import Command, Text, StateFilter
 # from aiogram.types import Message, CallbackQuery
-from bot_logic import log, Access, FSM
+from bot_logic import log, Access, FSM, dwnld_photo_or_doc
 from config_data.config import Config, load_config
 from keyboards import keyboard_admin, keyboard_ok, keyboard_privacy
 from variables import admins, SAVE_DIR, book, project
@@ -20,12 +21,26 @@ router: Router = Router()
 config: Config = load_config()
 TKN: str = config.tg_bot.token
 storage: MemoryStorage = MemoryStorage()
+user_files: [str, str] = {}
+
+
+# # ww
+# @router.message()
+# async def prosto(message: Message):
+#     print()
+#     print(message.media_group_id)
+#     for i in message:
+#         if not str(i).endswith('None)'):
+#             print(i)
+# @router.message(lambda msg: msg.text == 'q')
+# async def prosto(message: Message, state: FSMContext):
+#     print(state)
 
 
 # команда /help
 @router.message(Command(commands=['help']))
 async def process_help_command(message: Message):
-    log('logs.json', str(message.from_user.id), '/help')
+    log('logs.json', message.from_user.id, '/help')
     await message.answer(EN[project]['help'])
 
 
@@ -37,7 +52,7 @@ async def no_access(message: Message):
 
 # команда /start
 @router.message(Command(commands=['start']))
-async def process_start_command(message: Message, bot: Bot):
+async def process_start_command(message: Message, bot: Bot, state: FSMContext):
     worker = message.from_user
     msg_time = message.date.strftime("%d/%m/%Y %H:%M")
 
@@ -45,6 +60,9 @@ async def process_start_command(message: Message, bot: Bot):
     log('logs.json', 'logs',
         f'{msg_time}, {worker.full_name}, @{worker.username}, id {worker.id}, {worker.language_code}')
     log('logs.json', worker.id, '/start')
+
+    # бот переходит в состояние ожидания согласие с политикой
+    await state.set_state(FSM.policy)
 
     # приветствие и выдача политики
     await message.answer(text=EN[project]['start'], reply_markup=keyboard_privacy)
@@ -58,13 +76,16 @@ async def process_start_command(message: Message, bot: Bot):
 
 
 # согласен с политикой ✅
-@router.callback_query(Text(text=['ok_pressed']))
-async def privacy_ok(callback: CallbackQuery, bot: Bot):
+@router.callback_query(Text(text=['ok_pressed']), StateFilter(FSM.policy))
+async def privacy_ok(callback: CallbackQuery, bot: Bot, state: FSMContext):
     worker = callback.from_user
 
     # логи
     if str(worker.id) not in admins:
         log('logs.json', worker.id, 'privacy_ok')
+
+    # бот переходит в состояние ожидания первой фотки
+    await state.set_state(FSM.upload_photo)
 
     # выдать инструкцию и примеры
     await bot.send_message(text=EN[project]['instruct1'], chat_id=worker.id)
@@ -74,40 +95,84 @@ async def privacy_ok(callback: CallbackQuery, bot: Bot):
     await bot.send_message(text=EN[project]['instruct3'], chat_id=worker.id)
 
 
-# юзер отправил 2 фото или документа
-@router.message(F.content_type.in_({'photo', 'document'}))
-async def save_photo(msg: types.Message, bot: Bot):
+# юзер отправил альбом - не принимается
+@router.message(lambda msg: msg.media_group_id)
+async def alb(msg: Message):
     worker = msg.from_user
-    msg_time = str(msg.date.date())+'_'+str(msg.date.time()).replace(':', '-')
+    log('logs.json', worker.id, 'album')
+    await msg.reply("Please send each file in two separate messages, not as one album.")
 
-    # получение url файла
-    if msg.document:
-        file_id = msg.document.file_id
-    else:
-        file_id = msg.photo[-1].file_id
-    file_info = await bot.get_file(file_id)
-    file_url = file_info.file_path
 
-    # скачивание файла
-    response = requests.get(f'https://api.telegram.org/file/bot{TKN}/{file_url}')
-    file_path = os.path.join(SAVE_DIR, f'{msg_time}_id{str(worker.id)}_{file_info.file_path.split("/")[-1]}')
-    with open(file_path, 'wb') as f:
-        f.write(response.content)
+# юзер отправил 1ое фото
+@router.message(F.content_type.in_({'photo', 'document'}), StateFilter(FSM.upload_photo))
+async def photo1(msg: Message, bot: Bot, state: FSMContext):
+    worker = msg.from_user
+
+    path = await dwnld_photo_or_doc(msg, bot, worker, TKN)
+    print(path)
+    # сохранить первый файл
+    user_files[worker.id] = []
+    user_files[worker.id].append(msg.message_id)
+
+    log('logs.json', worker.id, 'SENT_FILE_1')
+
+    # бот переходит в состояние ожидания 2го фото
+    await state.set_state(FSM.upload_2_photo)
+
+    await msg.reply("Good, now send the second one.")
+
+
+# юзер отправил 2ое фото
+@router.message(F.content_type.in_({'photo', 'document'}), StateFilter(FSM.upload_2_photo))
+# @router.message(lambda msg: msg.text == 'a')
+async def save_photo(msg: types.Message, bot: Bot, state: FSMContext):
+    worker = msg.from_user
+
+    # сохранить 2й файл
+    user_files[worker.id].append(msg.message_id)
+    # print(await dwnld_photo_or_doc(msg, bot, worker, TKN))
+
     await msg.reply(f"Thanks! Please wait for us to check your work.")
-
     # логи
-    if str(worker.id) not in admins:
-        log('logs.json', worker.id, 'SENT_FILE')
-        log('user_baza.json', EN[project]['log'], str(worker.id))
-        book.setdefault(EN[project]['log'], []).append(str(worker.id))
+    # if str(worker.id) not in admins:
+    log('logs.json', worker.id, 'SENT_FILE_2')
+    log('user_baza.json', EN[project]['log'], str(worker.id))
+    book.setdefault(EN[project]['log'], []).append(str(worker.id))
 
-    # Отправить файл админу и ожидать приемки
+    # Отправить файлЫ админу и ожидать приемки
+    print(user_files[worker.id])
     for i in admins:
-        await bot.forward_message(chat_id=i, from_chat_id=worker.id, message_id=msg.message_id)
-        await bot.send_message(chat_id=i, text=f'Принять файл от {worker.full_name} @{worker.username} id{worker.id}?',
+        for x in user_files[worker.id]:
+            await bot.forward_message(chat_id=i, from_chat_id=worker.id, message_id=x)
+        await bot.send_message(chat_id=i, text=f'Принять файлы от {worker.full_name} @{worker.username} id{worker.id}?',
                                reply_markup=keyboard_admin)
 
-    print(msg_time)
-    print(worker.full_name, 'sent file')
+    # # запросить id исполнителя на платформе, если еще не отправлял
+    # if 1:
+    #     time.sleep(1)
+    #     await msg.reply(f"While we are checking, please send your Prolific ID, which consists of 24 symbols.")
+    #     await state.set_state(FSM.platform_user_id)
+
+    print(worker.full_name, 'sent all files')
     print()
+
+
+# # юзер отправил свой id площадки. на prolific выглядит так 5a9d64f5f6dfdd0001eaa73d
+# @router.message(F.content_type.in_({'text'}), StateFilter(FSM.platform_user_id))
+# async def platform_user_id(msg: types.Message, bot: Bot, state: FSMContext):
+#     txt = str(msg.text)
+#     worker = msg.from_user
+#
+#     if len(txt) == 24:
+#         await msg.reply("Good! ID saved, please wait.")
+#         await state.set_state(FSM.waiting_verif)
+#
+#         # логи
+#         log('logs.json', worker.id, f'platform id {txt}')
+#         book.setdefault(EN[project]['log'], []).append(str(worker.id))
+#
+#     else:
+#         await msg.reply('It does not look like an id, try again.')
+#         log('logs.json', worker.id, 'failed id')
+
 

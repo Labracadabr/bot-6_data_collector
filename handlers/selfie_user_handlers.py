@@ -1,7 +1,7 @@
 import time
 import requests
 import os
-from aiogram import Router, Bot, F, types
+from aiogram import Router, Bot, F
 from aiogram.filters import Command, Text
 from aiogram.types import Message, CallbackQuery
 from bot_logic import log, Access
@@ -71,7 +71,7 @@ async def privacy_ok(callback: CallbackQuery, bot: Bot):
 
 # юзер отправил фото или документ
 @router.message(F.content_type.in_({'photo', 'document'}))
-async def save_photo(msg: types.Message, bot: Bot):
+async def save_photo(msg: Message, bot: Bot):
     worker = msg.from_user
     msg_time = str(msg.date.date())+'_'+str(msg.date.time()).replace(':', '-')
 
@@ -96,7 +96,7 @@ async def save_photo(msg: types.Message, bot: Bot):
         log('user_baza.json', EN[project]['log'], str(worker.id))
         book.setdefault(EN[project]['log'], []).append(str(worker.id))
 
-    # Отправить файл админу и ожидать приемки
+    # Отправить файл админу для вынесения вердикта
     for i in admins:
         await bot.forward_message(chat_id=i, from_chat_id=worker.id, message_id=msg.message_id)
         await bot.send_message(chat_id=i, text=f'Принять файл от {worker.full_name} @{worker.username} id{worker.id}?',

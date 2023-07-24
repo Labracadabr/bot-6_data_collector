@@ -35,7 +35,7 @@ async def admin_ok(callback: CallbackQuery, bot:Bot):
             break
 
     # убрать кнопки админа
-    await bot.edit_message_text(f'{msg.text}\n\n✅ Принято', msg.chat.id, msg.message_id, reply_markup=None)
+    await bot.edit_message_text(f'{msg.text}\n✅ Принято', msg.chat.id, msg.message_id, reply_markup=None)
 
     # Дать юзеру код
     await bot.send_message(chat_id=worker, text=f"Success! Here is your verification code, just click it to copy:")

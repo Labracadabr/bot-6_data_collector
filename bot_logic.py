@@ -2,6 +2,9 @@ import json
 from aiogram.types import Message
 from aiogram.filters import BaseFilter
 from aiogram.filters.state import State, StatesGroup
+import requests
+import os
+from variables import SAVE_DIR
 
 
 # Фильтр, проверяющий доступ юзера
@@ -17,12 +20,12 @@ class Access(BaseFilter):
 
 # Состояния FSM
 class FSM(StatesGroup):
-    # Создаем экземпляры класса State, последовательно перечисляя возможные состояния, в которых будет находиться
-    # бот в разные моменты взаимодействия с юзером
+    # Состояния, в которых будет находиться бот в разные моменты взаимодействия с юзером
     policy = State()            # Состояние ожидания соглашения с policy
     platform_user_id = State()  # Состояние ожидания ввода id
     upload_photo = State()      # Состояние ожидания загрузки фото
     upload_2_photo = State()    # Состояние ожидания загрузки ДВУХ фото
+    waiting_verif = State()     # Юзер всё скинул и ждет код
 
 
 # Запись данных item в указанный json file по ключу key
@@ -30,18 +33,28 @@ def log(file, key, item):
     with open(file, encoding='utf-8') as f:
         data = json.load(f)
 
-    data.setdefault(key, []).append(item)
+    data.setdefault(str(key), []).append(item)
 
     with open(file, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
-# #  Палит админу действия юзеров
-# async def intel(bot, message, admins, silence: bool):
-#     user = str(message.from_user.id)
-#     if user not in admins:
-#         for i in admins:
-#             await bot.send_message(text=f'{message.text} id{user} {message.from_user.full_name}'
-#                                         f' @{message.from_user.username}', chat_id=i, disable_notification=silence)
-# не работает
+# скачать в SAVE_DIR и выдать путь
+async def dwnld_photo_or_doc(msg, bot, worker, tkn):
+    # получение url файла
+    if msg.document:
+        file_id = msg.document.file_id
+    else:
+        file_id = msg.photo[-1].file_id
+    file_info = await bot.get_file(file_id)
+    file_url = file_info.file_path
 
+    # скачивание файла
+    msg_time = str(msg.date.date())+'_'+str(msg.date.time()).replace(':', '-')
+    tg_file_link = f'https://api.telegram.org/file/bot{tkn}/{file_url}'
+    response = requests.get(tg_file_link)
+    file_path = os.path.join(SAVE_DIR, f'{msg_time}_id{str(worker.id)}_{file_info.file_path.split("/")[-1]}')
+    with open(file_path, 'wb') as f:
+        f.write(response.content)
+    print('file ok')
+    return tg_file_link

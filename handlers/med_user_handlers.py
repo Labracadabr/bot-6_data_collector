@@ -3,17 +3,17 @@ import json
 import requests
 import os
 from aiogram import Router, Bot, F, types, Dispatcher
-from aiogram.filters import Command, Text, StateFilter
+from aiogram.filters import Command, Text, StateFilter, or_f
 # from aiogram.types import Message, CallbackQuery
 from bot_logic import log, Access, FSM, dwnld_photo_or_doc
 from config_data.config import Config, load_config
 from keyboards import keyboard_admin, keyboard_ok, keyboard_privacy
-from variables import admins, SAVE_DIR, book, project
+from variables import admins, book, project, auto_approve, verification_code, platform_id_example
 from lexic.lexic import EN
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import (CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, PhotoSize)
+from aiogram.types import CallbackQuery, Message
 
 
 # Инициализация всяких ботских штук
@@ -81,21 +81,66 @@ async def privacy_ok(callback: CallbackQuery, bot: Bot, state: FSMContext):
     worker = callback.from_user
 
     # логи
-    if str(worker.id) not in admins:
-        log('logs.json', worker.id, 'privacy_ok')
-
-    # бот переходит в состояние ожидания первой фотки
-    await state.set_state(FSM.upload_photo)
+    # if str(worker.id) not in admins:
+    log('logs.json', worker.id, 'privacy_ok')
 
     # выдать инструкцию и примеры
     await bot.send_message(text=EN[project]['instruct1'], chat_id=worker.id)
-    await bot.send_photo(photo=EN[project]['example_link'], caption='Examples', chat_id=worker.id)
+    # await bot.send_photo(photo=EN[project]['example_link'], caption='Examples', chat_id=worker.id)
+    await bot.send_media_group(media=json.loads(EN[project]['example_json']), chat_id=worker.id)
     await bot.send_message(text=EN[project]['instruct2'], chat_id=worker.id, parse_mode='HTML')
-    time.sleep(3)
-    await bot.send_message(text=EN[project]['instruct3'], chat_id=worker.id)
+    time.sleep(1)
+
+    if auto_approve:
+        await bot.send_message(text=EN[project]['instruct3'], chat_id=worker.id, parse_mode='HTML')
+        # бот переходит в состояние ожидания первой фотки
+        await state.set_state(FSM.upload_photo)
+
+    if not auto_approve:
+        # бот переходит в состояние ожидания platform_id
+        await bot.send_message(text=f'First, please now send your platform ID.\nExample: {platform_id_example}',
+                               chat_id=worker.id, parse_mode='HTML')
+        await state.set_state(FSM.platform_user_id)
 
 
-# юзер отправил альбом - не принимается
+# если юзер пишет что-то не нажав ✅
+@router.message(StateFilter(FSM.policy))
+async def privacy_missing(msg: Message):
+    log('logs.json', msg.from_user.id, 'privacy_missing')
+    await msg.answer("Please accept the policy first.")
+
+
+# если юзер кидает фото не отправив platform ID
+@router.message(F.content_type.in_({'photo', 'document'}), StateFilter(FSM.platform_user_id))
+async def platform_id_missing(msg: Message):
+    log('logs.json', msg.from_user.id, 'platform_id_missing')
+    await msg.answer("I am now expecting your platform ID.")
+
+
+# юзер отправил свой id площадки
+@router.message(F.content_type.in_({'text'}), StateFilter(FSM.platform_user_id))
+async def platform_user_id(msg: types.Message, bot: Bot, state: FSMContext):
+    txt = str(msg.text)
+    worker = msg.from_user
+
+    if len(txt) == len(platform_id_example):
+        # бот переходит в состояние ожидания первой фотки
+        await bot.send_message(text=f"Ok! {EN[project]['instruct3']}\n{EN[project]['full_hd']}",
+                               chat_id=worker.id, parse_mode='HTML')
+        await state.set_state(FSM.upload_photo)
+
+        # логи
+        log('logs.json', worker.id, f'platform_id {txt}')
+        log('uzer_baza.json', worker.id, txt)
+
+        book.setdefault(EN[project]['log'], []).append(str(worker.id))
+
+    else:
+        await msg.reply('It does not look like an id, try again.')
+        log('logs.json', worker.id, 'failed id')
+
+
+# юзер отправил альбом: не принимается
 @router.message(lambda msg: msg.media_group_id)
 async def alb(msg: Message):
     worker = msg.from_user
@@ -103,76 +148,82 @@ async def alb(msg: Message):
     await msg.reply("Please send each file in two separate messages, not as one album.")
 
 
+# юзер отправил сжатые фото
+@router.message(F.content_type.in_({'photo'}))
+async def compressed_pic(msg: Message, bot: Bot, state: FSMContext):
+    log('logs.json', msg.from_user.id, '/file')
+    await msg.reply(EN[project]['full_hd'], parse_mode='HTML')
+
+
+
 # юзер отправил 1ое фото
-@router.message(F.content_type.in_({'photo', 'document'}), StateFilter(FSM.upload_photo))
+@router.message(F.content_type.in_({'document'}), StateFilter(FSM.upload_photo))
 async def photo1(msg: Message, bot: Bot, state: FSMContext):
     worker = msg.from_user
 
-    path = await dwnld_photo_or_doc(msg, bot, worker, TKN)
-    print(path)
     # сохранить первый файл
+    await dwnld_photo_or_doc(msg, bot, worker, TKN)
     user_files[worker.id] = []
     user_files[worker.id].append(msg.message_id)
-
     log('logs.json', worker.id, 'SENT_FILE_1')
 
     # бот переходит в состояние ожидания 2го фото
     await state.set_state(FSM.upload_2_photo)
-
-    await msg.reply("Good, now send the second one.")
+    await msg.reply("Good, now send the second part.")
 
 
 # юзер отправил 2ое фото
 @router.message(F.content_type.in_({'photo', 'document'}), StateFilter(FSM.upload_2_photo))
 # @router.message(lambda msg: msg.text == 'a')
-async def save_photo(msg: types.Message, bot: Bot, state: FSMContext):
+async def photo2(msg: types.Message, bot: Bot, state: FSMContext):
     worker = msg.from_user
 
     # сохранить 2й файл
     user_files[worker.id].append(msg.message_id)
-    # print(await dwnld_photo_or_doc(msg, bot, worker, TKN))
+    await dwnld_photo_or_doc(msg, bot, worker, TKN)
 
-    await msg.reply(f"Thanks! Please wait for us to check your work.")
+    if auto_approve:    # юзер ожидает проверку
+        await msg.reply(f"Thanks! Please wait for us to check your work.")
+        await state.set_state(FSM.waiting_verif)
+        # Отправить файлЫ админу на проверку
+        for i in admins:
+            for x in user_files[worker.id]:
+                await bot.forward_message(chat_id=i, from_chat_id=worker.id, message_id=x)
+            await bot.send_message(chat_id=i,
+                                   text=f'Принять файлы от {worker.full_name} @{worker.username} id{worker.id}?',
+                                   reply_markup=keyboard_admin)
+
+    if not auto_approve:  # запросить id исполнителя на платформе, если еще не отправлял
+        # Дать юзеру код
+        await bot.send_message(chat_id=worker.id, text=f"Done! Here is your verification code, just click it to copy:")
+        await bot.send_message(chat_id=worker.id, text=f'<code>{verification_code}</code>', parse_mode='HTML')
+
+        # Отправить файлЫ админу на проверку
+        with open('uzer_baza.json', 'r') as f:
+            data = json.load(f)
+            platform_id = data['platform_id'][str(worker.id)]
+
+        for i in admins:
+            for x in user_files[worker.id]:
+                await bot.forward_message(chat_id=i, from_chat_id=worker.id, message_id=x)
+            await bot.send_message(chat_id=i,
+                                   text=f'Принять файлы от {worker.full_name} @{worker.username} id{worker.id}?\n'
+                                        f'platform_id{platform_id}',
+                                   reply_markup=keyboard_admin)
+
     # логи
     # if str(worker.id) not in admins:
     log('logs.json', worker.id, 'SENT_FILE_2')
     log('user_baza.json', EN[project]['log'], str(worker.id))
     book.setdefault(EN[project]['log'], []).append(str(worker.id))
 
-    # Отправить файлЫ админу и ожидать приемки
-    print(user_files[worker.id])
+    # Отправить файлЫ админу на проверку
     for i in admins:
         for x in user_files[worker.id]:
             await bot.forward_message(chat_id=i, from_chat_id=worker.id, message_id=x)
         await bot.send_message(chat_id=i, text=f'Принять файлы от {worker.full_name} @{worker.username} id{worker.id}?',
                                reply_markup=keyboard_admin)
 
-    # # запросить id исполнителя на платформе, если еще не отправлял
-    # if 1:
-    #     time.sleep(1)
-    #     await msg.reply(f"While we are checking, please send your Prolific ID, which consists of 24 symbols.")
-    #     await state.set_state(FSM.platform_user_id)
-
     print(worker.full_name, 'sent all files')
     print()
-
-
-# # юзер отправил свой id площадки. на prolific выглядит так 5a9d64f5f6dfdd0001eaa73d
-# @router.message(F.content_type.in_({'text'}), StateFilter(FSM.platform_user_id))
-# async def platform_user_id(msg: types.Message, bot: Bot, state: FSMContext):
-#     txt = str(msg.text)
-#     worker = msg.from_user
-#
-#     if len(txt) == 24:
-#         await msg.reply("Good! ID saved, please wait.")
-#         await state.set_state(FSM.waiting_verif)
-#
-#         # логи
-#         log('logs.json', worker.id, f'platform id {txt}')
-#         book.setdefault(EN[project]['log'], []).append(str(worker.id))
-#
-#     else:
-#         await msg.reply('It does not look like an id, try again.')
-#         log('logs.json', worker.id, 'failed id')
-
 

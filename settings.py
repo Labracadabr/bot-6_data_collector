@@ -1,11 +1,12 @@
 import json
 
-# для какого проекта настройки
-project = 'med'
-# project = 'selfie'
+# для какого проекта настройки. от этого зависит, по какому сценарию бот будет отвечать
+# project = 'med'
+project = 'selfie'
 # project = ''
 
-# тип приемки ответов на платформе
+# тип приемки ответов на платформе.
+# если False, то verification_code выдается сразу, как юзер всё отправил, и в results сохраняется platform_id
 auto_approve: bool = False
 
 # если ручная пост-приемка, указать пример platform_id

@@ -3,6 +3,7 @@ logs.json
 .env
 user_baza.json
 .png
+hz.py
 
 /OUTPUT
 /MED

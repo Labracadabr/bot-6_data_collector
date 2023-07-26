@@ -6,7 +6,7 @@ from handlers import admin_handlers, selfie_user_handlers, med_user_handlers
 from settings import project
 
 
-# нужный проект выберется автоматически на основе project из variables
+# нужный проект выберется автоматически на основе project из settings
 projects = {'selfie': selfie_user_handlers.router,
             'med': med_user_handlers.router,
             }

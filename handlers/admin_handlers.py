@@ -97,10 +97,10 @@ async def reply_decline_reason(msg: Message, bot: Bot):
     # сообщение, на которое отвечаем
     orig = msg.reply_to_message
 
-    # обновить сообщение у админа и дописать причину отказа
-    await bot.edit_message_text(f'❌ Отклонено. Причина:\n{reason}', orig.chat.id, orig.message_id,
-                                reply_markup=None)
-
+    # # обновить сообщение у админа и дописать причину отказа
+    # await bot.edit_message_text(f'❌ Отклонено. Причина:\n{reason}', orig.chat.id, orig.message_id,
+    #                             reply_markup=None)
+    #
     if auto_approve:
         # обновить сообщение у админа и дописать причину отказа
         await bot.edit_message_text(f'❌ Отклонено. Причина:\n{reason}', orig.chat.id, orig.message_id,

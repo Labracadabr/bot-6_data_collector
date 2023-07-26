@@ -39,7 +39,7 @@ def log(file, key, item):
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
-# скачать в SAVE_DIR
+# скачать в SAVE_DIR фото или файл
 async def dwnld_photo_or_doc(msg, bot, worker, tkn):
     # получение url файла
     if msg.document:

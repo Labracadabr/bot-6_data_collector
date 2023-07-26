@@ -7,7 +7,7 @@ from aiogram.types import Message, CallbackQuery
 from bot_logic import log, Access
 from config_data.config import Config, load_config
 from keyboards import keyboard_admin, keyboard_ok, keyboard_privacy
-from variables import admins, SAVE_DIR, book, project
+from settings import admins, SAVE_DIR, book, project
 from lexic.lexic import EN
 
 

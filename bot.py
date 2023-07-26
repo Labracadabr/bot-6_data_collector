@@ -3,7 +3,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram import Bot, Dispatcher
 from config_data.config import Config, load_config
 from handlers import admin_handlers, selfie_user_handlers, med_user_handlers
-from variables import project
+from settings import project
 
 
 # нужный проект выберется автоматически на основе project из variables

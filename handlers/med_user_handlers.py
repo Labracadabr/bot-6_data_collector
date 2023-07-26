@@ -8,7 +8,7 @@ from aiogram.filters import Command, Text, StateFilter, or_f
 from bot_logic import log, Access, FSM, dwnld_photo_or_doc
 from config_data.config import Config, load_config
 from keyboards import keyboard_admin, keyboard_ok, keyboard_privacy
-from variables import admins, book, project, auto_approve, verification_code, platform_id_example
+from settings import admins, book, project, auto_approve, verification_code, platform_id_example
 from lexic.lexic import EN
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
@@ -198,8 +198,7 @@ async def photo2(msg: types.Message, bot: Bot, state: FSMContext):
                                    text=f'Принять файлы от {worker.full_name} @{worker.username} id{worker.id}?',
                                    reply_markup=keyboard_admin)
 
-    if not auto_approve:
-        # Дать юзеру код
+    if not auto_approve:    # Дать юзеру код
         await bot.send_message(chat_id=worker.id, text=f"Done! Here is your verification code, just click it to copy:")
         await bot.send_message(chat_id=worker.id, text=f'<code>{verification_code}</code>', parse_mode='HTML')
 

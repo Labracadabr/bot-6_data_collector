@@ -1,7 +1,7 @@
 from aiogram import Router, Bot
 from aiogram.filters import Text
 from aiogram.types import Message, CallbackQuery
-from variables import verification_code, admins, book, auto_approve, results
+from settings import verification_code, admins, book, auto_approve, results
 from bot_logic import Access, log
 import json
 

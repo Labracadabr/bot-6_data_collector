@@ -1,4 +1,4 @@
-from variables import mngr
+from settings import mngr
 
 # RU: dict[str, dict[str, str]] = {}
 EN: dict[str, dict[str, str]] = {

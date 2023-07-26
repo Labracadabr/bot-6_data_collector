@@ -4,7 +4,7 @@ from aiogram.filters import BaseFilter
 from aiogram.filters.state import State, StatesGroup
 import requests
 import os
-from variables import SAVE_DIR
+from settings import SAVE_DIR
 
 
 # Фильтр, проверяющий доступ юзера

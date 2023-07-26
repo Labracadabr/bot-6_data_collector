@@ -55,7 +55,7 @@ EN: dict[str, dict[str, str]] = {
                      ' we already have those in our database.',
 
         'instruct3': 'You can now send your pictures.\n\n'
-                     'Please send each file in <b>two separate messages</b>, not as one album.\n\n',
+                     'Please send each file in <b>two separate messages</b>, not as one album.',
 
         'example_link': 'https://storage.yandexcloud.net/sbs-toloka/rr/insurance_cards/example_correct_1.jpg',
         'example_link2': 'https://storage.yandexcloud.net/sbs-toloka/rr/insurance_cards/example_correct_n2.jpg',

@@ -2,9 +2,10 @@ fix.py
 logs.json
 .env
 user_baza.json
-/SELFIES
+
+/OUTPUT
 /MED
-/EXAMPLES
+/SELFIES
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

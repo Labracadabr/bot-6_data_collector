@@ -120,23 +120,29 @@ async def platform_id_missing(msg: Message):
 # юзер отправил свой id площадки
 @router.message(F.content_type.in_({'text'}), StateFilter(FSM.platform_user_id))
 async def platform_user_id(msg: types.Message, bot: Bot, state: FSMContext):
-    txt = str(msg.text)
+    platform_id = str(msg.text)
     worker = msg.from_user
 
-    if len(txt) == len(platform_id_example):
+    if len(platform_id) == len(platform_id_example):
         # бот переходит в состояние ожидания первой фотки
-        await bot.send_message(text=f"Ok! {EN[project]['instruct3']}\n{EN[project]['full_hd']}",
+        await bot.send_message(text=f"Ok! {EN[project]['instruct3']}\n\n{EN[project]['full_hd']}",
                                chat_id=worker.id, parse_mode='HTML')
         await state.set_state(FSM.upload_photo)
 
         # логи
-        log('logs.json', worker.id, f'platform_id {txt}')
-        log('uzer_baza.json', worker.id, txt)
-
+        log('logs.json', worker.id, f'platform_id {platform_id}')
         book.setdefault(EN[project]['log'], []).append(str(worker.id))
+        # log('user_baza.json', 'platform_ids'[worker.id], platform_id)
+
+        # сохранить platform_id
+        with open('user_baza.json', encoding='utf-8') as f:
+            data = json.load(f)
+        data['platform_ids'][str(worker.id)] = platform_id
+        with open('user_baza.json', 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
 
     else:
-        await msg.reply('It does not look like an id, try again.')
+        await msg.reply('It does not look like a correct id, try again.')
         log('logs.json', worker.id, 'failed id')
 
 
@@ -153,7 +159,6 @@ async def alb(msg: Message):
 async def compressed_pic(msg: Message, bot: Bot, state: FSMContext):
     log('logs.json', msg.from_user.id, '/file')
     await msg.reply(EN[project]['full_hd'], parse_mode='HTML')
-
 
 
 # юзер отправил 1ое фото
@@ -187,25 +192,25 @@ async def photo2(msg: types.Message, bot: Bot, state: FSMContext):
         await state.set_state(FSM.waiting_verif)
         # Отправить файлЫ админу на проверку
         for i in admins:
-            for x in user_files[worker.id]:
-                await bot.forward_message(chat_id=i, from_chat_id=worker.id, message_id=x)
+            for pic in user_files[worker.id]:
+                await bot.forward_message(chat_id=i, from_chat_id=worker.id, message_id=pic)
             await bot.send_message(chat_id=i,
                                    text=f'Принять файлы от {worker.full_name} @{worker.username} id{worker.id}?',
                                    reply_markup=keyboard_admin)
 
-    if not auto_approve:  # запросить id исполнителя на платформе, если еще не отправлял
+    if not auto_approve:
         # Дать юзеру код
         await bot.send_message(chat_id=worker.id, text=f"Done! Here is your verification code, just click it to copy:")
         await bot.send_message(chat_id=worker.id, text=f'<code>{verification_code}</code>', parse_mode='HTML')
 
         # Отправить файлЫ админу на проверку
-        with open('uzer_baza.json', 'r') as f:
+        with open('user_baza.json', 'r') as f:
             data = json.load(f)
-            platform_id = data['platform_id'][str(worker.id)]
+            platform_id = data['platform_ids'][str(worker.id)]
 
         for i in admins:
-            for x in user_files[worker.id]:
-                await bot.forward_message(chat_id=i, from_chat_id=worker.id, message_id=x)
+            for pic in user_files[worker.id]:
+                await bot.forward_message(chat_id=i, from_chat_id=worker.id, message_id=pic)
             await bot.send_message(chat_id=i,
                                    text=f'Принять файлы от {worker.full_name} @{worker.username} id{worker.id}?\n'
                                         f'platform_id{platform_id}',
@@ -217,13 +222,12 @@ async def photo2(msg: types.Message, bot: Bot, state: FSMContext):
     log('user_baza.json', EN[project]['log'], str(worker.id))
     book.setdefault(EN[project]['log'], []).append(str(worker.id))
 
-    # Отправить файлЫ админу на проверку
-    for i in admins:
-        for x in user_files[worker.id]:
-            await bot.forward_message(chat_id=i, from_chat_id=worker.id, message_id=x)
-        await bot.send_message(chat_id=i, text=f'Принять файлы от {worker.full_name} @{worker.username} id{worker.id}?',
-                               reply_markup=keyboard_admin)
-
     print(worker.full_name, 'sent all files')
     print()
 
+
+# # если юзер что-то пишет, когда бот ожидает фото
+# @router.message(~Access(admins), F.content_type.in_({'text'}), or_f(StateFilter(FSM.upload_photo), StateFilter(FSM.upload_2_photo)))
+# async def pics_id_missing(msg: Message):
+#     log('logs.json', msg.from_user.id, 'pics_id_missing')
+#     await msg.answer("I am now expecting pictures.")

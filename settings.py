@@ -7,7 +7,7 @@ project = 'selfie'
 
 # тип приемки ответов на платформе.
 # если False, то verification_code выдается сразу, как юзер всё отправил, и в results сохраняется platform_id
-auto_approve: bool = False
+auto_approve: bool = True
 
 # если ручная пост-приемка на платформе, указать пример platform_id
 platform_id_example: str = '5a9d64f5f6dfdd0001eaa73d'

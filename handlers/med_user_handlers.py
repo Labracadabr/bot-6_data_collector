@@ -90,10 +90,11 @@ async def privacy_ok(callback: CallbackQuery, bot: Bot, state: FSMContext):
     # await bot.send_photo(photo=EN[project]['example_link'], caption='Examples', chat_id=worker.id)
     await bot.send_media_group(media=json.loads(EN[project]['example_json']), chat_id=worker.id)
     await bot.send_message(text=EN[project]['instruct2'], chat_id=worker.id, parse_mode='HTML')
-    time.sleep(1)
+    time.sleep(2)
 
     if auto_approve:
-        await bot.send_message(text=EN[project]['instruct3'], chat_id=worker.id, parse_mode='HTML')
+        await bot.send_message(text=f"{EN[project]['instruct3']}\n\n{EN[project]['full_hd']}",
+                               chat_id=worker.id, parse_mode='HTML')
         # бот переходит в состояние ожидания первой фотки
         await state.set_state(FSM.upload_photo)
 

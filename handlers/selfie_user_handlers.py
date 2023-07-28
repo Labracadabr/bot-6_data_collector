@@ -1,18 +1,5 @@
 import time
-import requests
-import os
-from aiogram import Router, Bot, F
-from aiogram.filters import Command, Text
-from aiogram.types import Message, CallbackQuery
-from bot_logic import log, Access
-from config_data.config import Config, load_config
-from keyboards import keyboard_admin, keyboard_ok, keyboard_privacy
-from settings import admins, SAVE_DIR, book, project
-from lexic.lexic import EN
-
-import time
 import json
-import requests
 import os
 from aiogram import Router, Bot, F, types, Dispatcher
 from aiogram.filters import Command, Text, StateFilter, or_f
@@ -32,6 +19,7 @@ from aiogram.types import CallbackQuery, Message
 router: Router = Router()
 config: Config = load_config()
 TKN: str = config.tg_bot.token
+storage: MemoryStorage = MemoryStorage()
 
 
 # команда /help
@@ -49,7 +37,7 @@ async def no_access(message: Message):
 
 # команда /start
 @router.message(Command(commands=['start']))
-async def process_start_command(message: Message, bot: Bot):
+async def process_start_command(message: Message, bot: Bot, state: FSMContext):
     worker = message.from_user
     msg_time = message.date.strftime("%d/%m/%Y %H:%M")
 
@@ -57,6 +45,9 @@ async def process_start_command(message: Message, bot: Bot):
     log('logs.json', 'logs',
         f'{msg_time}, {worker.full_name}, @{worker.username}, id {worker.id}, {worker.language_code}')
     log('logs.json', worker.id, '/start')
+
+    # бот переходит в состояние ожидания согласие с политикой
+    await state.set_state(FSM.policy)
 
     # приветствие и выдача политики
     await message.answer(text=EN[project]['start'], reply_markup=keyboard_privacy)
@@ -70,25 +61,42 @@ async def process_start_command(message: Message, bot: Bot):
 
 
 # согласен с политикой ✅
-@router.callback_query(Text(text=['ok_pressed']))
-async def privacy_ok(callback: CallbackQuery, bot: Bot):
+@router.callback_query(Text(text=['ok_pressed']), StateFilter(FSM.policy))
+async def privacy_ok(callback: CallbackQuery, bot: Bot, state: FSMContext):
     worker = callback.from_user
 
     # логи
-    if str(worker.id) not in admins:
-        log('logs.json', worker.id, 'privacy_ok')
+    # if str(worker.id) not in admins:
+    log('logs.json', worker.id, 'privacy_ok')
 
     # выдать инструкцию и примеры
     await bot.send_message(text=EN[project]['instruct1'], chat_id=worker.id)
     await bot.send_photo(photo=EN[project]['example_link'], caption='Examples', chat_id=worker.id)
     await bot.send_message(text=EN[project]['instruct2'], chat_id=worker.id, parse_mode='HTML')
-    time.sleep(3)
-    await bot.send_message(text=EN[project]['instruct3'], chat_id=worker.id)
+    time.sleep(2)
+    await bot.send_message(text=f"{EN[project]['instruct3']}\n\n{EN[project]['full_hd']}",
+                           chat_id=worker.id, parse_mode='HTML')
+    # бот переходит в состояние ожидания первой фотки
+    await state.set_state(FSM.upload_photo)
 
 
-# юзер отправил фото или документ
-@router.message(F.content_type.in_({'photo', 'document'}))
-async def save_photo(msg: Message, bot: Bot):
+# если юзер пишет что-то не нажав ✅
+@router.message(StateFilter(FSM.policy))
+async def privacy_missing(msg: Message):
+    log('logs.json', msg.from_user.id, 'privacy_missing')
+    await msg.answer("Please accept the policy first.")
+
+
+# юзер отправил сжатые фото
+@router.message(F.content_type.in_({'photo'}))
+async def compressed_pic(msg: Message):
+    log('logs.json', msg.from_user.id, '/file')
+    await msg.reply(EN[project]['full_hd'], parse_mode='HTML')
+
+
+# юзер отправил несжатое фото
+@router.message(F.content_type.in_({'document'}), StateFilter(FSM.upload_photo))
+async def photo1(msg: Message, bot: Bot, state: FSMContext):
     worker = msg.from_user
     msg_time = str(msg.date.date())+'_'+str(msg.date.time()).replace(':', '-')
 
@@ -111,10 +119,10 @@ async def save_photo(msg: Message, bot: Bot):
     await msg.reply(f"Thanks! Please wait for us to check your work.")
 
     # логи
-    if str(worker.id) not in admins:
-        log('logs.json', worker.id, 'SENT_FILE')
-        log('user_baza.json', EN[project]['log'], str(worker.id))
-        book.setdefault(EN[project]['log'], []).append(str(worker.id))
+    # if str(worker.id) not in admins:
+    log('logs.json', worker.id, 'SENT_FILE')
+    log('user_baza.json', EN[project]['log'], str(worker.id))
+    book.setdefault(EN[project]['log'], []).append(str(worker.id))
 
     # Отправить файл админу для вынесения вердикта
     for i in admins:

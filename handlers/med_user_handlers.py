@@ -55,6 +55,7 @@ async def no_access(message: Message):
 async def process_start_command(message: Message, bot: Bot, state: FSMContext):
     worker = message.from_user
     msg_time = message.date.strftime("%d/%m/%Y %H:%M")
+    # print(message.json(indent=4, exclude_none=True))
 
     # логи
     log('logs.json', 'logs',
@@ -178,7 +179,7 @@ async def photo1(msg: Message, bot: Bot, state: FSMContext):
 
 
 # юзер отправил 2ое фото
-@router.message(F.content_type.in_({'photo', 'document'}), StateFilter(FSM.upload_2_photo))
+@router.message(F.content_type.in_({'document'}), StateFilter(FSM.upload_2_photo))
 # @router.message(lambda msg: msg.text == 'a')
 async def photo2(msg: types.Message, bot: Bot, state: FSMContext):
     worker = msg.from_user

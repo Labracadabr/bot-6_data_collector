@@ -9,7 +9,7 @@ project = 'selfie'
 # если False, то verification_code выдается сразу, как юзер всё отправил, и в results сохраняется platform_id
 auto_approve: bool = False
 
-# если ручная пост-приемка, указать пример platform_id
+# если ручная пост-приемка на платформе, указать пример platform_id
 platform_id_example: str = '5a9d64f5f6dfdd0001eaa73d'
 
 # Кому юзер напишет в случае проблем. Встречается только в команде /help

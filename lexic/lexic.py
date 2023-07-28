@@ -13,6 +13,9 @@ EN: dict[str, dict[str, str]] = {
 
         'ban': f'You were banned',
 
+        'full_hd': 'You must send pictures as files <b>without compression</b>. If you do not know how,'
+                   ' <a href="https://www.youtube.com/embed/qOOMNJ0gIss">here</a> is a 9 sec tutorial.',
+
         'help': f'If something does not work, contact {mngr}',
 
         'instruct1': 'Thanks! Please now see the examples and instruction.',

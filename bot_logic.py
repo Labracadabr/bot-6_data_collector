@@ -58,3 +58,16 @@ async def dwnld_photo_or_doc(msg, bot, worker, tkn):
         f.write(response.content)
     print('file ok')
     # return tg_file_link
+
+
+# создать необходимые файлы, если их нет
+def create_file_if_not_exists(file_path):
+    try:
+        with open(file_path, 'x'):
+            print(f"File '{file_path}' created successfully.")
+    except FileExistsError:
+        print(f"File '{file_path}' exists.")
+
+
+create_file_if_not_exists('user_baza.json')
+create_file_if_not_exists('logs.json')

@@ -1,5 +1,4 @@
-from aiogram import Router, Bot
-from aiogram.filters import Text
+from aiogram import Router, Bot, F
 from aiogram.types import Message, CallbackQuery
 from settings import verification_code, admins, book, auto_approve, results
 from bot_logic import Access, log
@@ -25,7 +24,7 @@ async def banner(msg: Message):
 
 
 # admin нажал ✅
-@router.callback_query(Text(text=['admin_ok']))
+@router.callback_query(lambda x: x.data == 'admin_ok')
 async def admin_ok(callback: CallbackQuery, bot:Bot):
     msg = callback.message
 
@@ -57,7 +56,7 @@ async def admin_ok(callback: CallbackQuery, bot:Bot):
 
 
 # admin нажал ❌
-@router.callback_query(Text(text=['admin_no']))
+@router.callback_query(lambda x: x.data == 'admin_no')
 async def admin_no(callback: CallbackQuery, bot: Bot):
     msg = callback.message
 

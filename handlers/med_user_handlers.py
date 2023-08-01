@@ -2,8 +2,8 @@ import time
 import json
 import requests
 import os
-from aiogram import Router, Bot, F, types, Dispatcher
-from aiogram.filters import Command, Text, StateFilter, or_f
+from aiogram import Router, Bot, F, types
+from aiogram.filters import Command, StateFilter, or_f
 # from aiogram.types import Message, CallbackQuery
 from bot_logic import log, Access, FSM, dwnld_photo_or_doc
 from config_data.config import Config, load_config
@@ -77,7 +77,7 @@ async def process_start_command(message: Message, bot: Bot, state: FSMContext):
 
 
 # согласен с политикой ✅
-@router.callback_query(Text(text=['ok_pressed']), StateFilter(FSM.policy))
+@router.callback_query(lambda x: x.data == "ok_pressed", StateFilter(FSM.policy))
 async def privacy_ok(callback: CallbackQuery, bot: Bot, state: FSMContext):
     worker = callback.from_user
 

@@ -2,7 +2,7 @@ import time
 import json
 import os
 from aiogram import Router, Bot, F, types, Dispatcher
-from aiogram.filters import Command, Text, StateFilter, or_f
+from aiogram.filters import Command, StateFilter, or_f
 # from aiogram.types import Message, CallbackQuery
 from bot_logic import log, Access, FSM, dwnld_photo_or_doc
 from config_data.config import Config, load_config
@@ -61,9 +61,11 @@ async def process_start_command(message: Message, bot: Bot, state: FSMContext):
 
 
 # согласен с политикой ✅
-@router.callback_query(Text(text=['ok_pressed']), StateFilter(FSM.policy))
+@router.callback_query(lambda x: x.data == "ok_pressed", StateFilter(FSM.policy))
 async def privacy_ok(callback: CallbackQuery, bot: Bot, state: FSMContext):
     worker = callback.from_user
+
+    print(callback.model_dump_json(indent=4, exclude_none=True))
 
     # логи
     # if str(worker.id) not in admins:
@@ -101,20 +103,6 @@ async def photo1(msg: Message, bot: Bot, state: FSMContext):
     msg_time = str(msg.date.date())+'_'+str(msg.date.time()).replace(':', '-')
 
     await dwnld_photo_or_doc(msg, bot, worker, TKN)
-
-    # # получение url файла
-    # if msg.document:
-    #     file_id = msg.document.file_id
-    # else:
-    #     file_id = msg.photo[-1].file_id
-    # file_info = await bot.get_file(file_id)
-    # file_url = file_info.file_path
-    #
-    # # скачивание файла
-    # response = requests.get(f'https://api.telegram.org/file/bot{TKN}/{file_url}')
-    # file_path = os.path.join(SAVE_DIR, f'{msg_time}_id{str(worker.id)}_{file_info.file_path.split("/")[-1]}')
-    # with open(file_path, 'wb') as f:
-    #     f.write(response.content)
 
     await msg.reply(f"Thanks! Please wait for us to check your work.")
 
